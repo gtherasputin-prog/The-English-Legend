@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="logo-icon.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#172554"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="English Legend"><link rel="apple-touch-icon" href="apple-touch-icon.png"><title>THE ENGLISH LEGEND</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<section id="login"><form class="lgc" onsubmit="login();return false">
+<img src="logo-full.png" alt="THE ENGLISH LEGEND" class="lfull">
+<label>اسم المستخدم</label><input id="lu" dir="ltr" autocomplete="username" required>
+<label style="margin-top:12px">كلمة السر</label><input id="lp" type="password" dir="ltr" autocomplete="current-password" required>
+<p id="le" style="color:#dc2626;font-weight:800;min-height:28px;margin-top:8px"></p>
+<button class="btn" style="width:100%">دخول 🚀</button></form></section>
+<div id="app" hidden>
+<header><div class="logo" onclick="go(me.role=='teacher'?'overview':'home')"><img src="logo-icon.png" alt="" class="licon"><b>THE ENGLISH LEGEND</b></div>
+<div class="hr"><button class="ib" id="bell" onclick="notify()" aria-label="الإشعارات">🔔</button>
+<div class="pm"><button class="av" id="avt" onclick="$('#menu').classList.toggle('open')" aria-label="القائمة"></button>
+<div id="menu"><button id="inst" hidden onclick="install()">📲 ثبّت التطبيق</button><button onclick="auth.signOut()">تسجيل الخروج</button></div></div></div></header>
+<div class="shell"><nav id="nav"></nav><main id="main"></main></div></div>
+<div id="toast"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="script.js"></script>
+</body></html>
