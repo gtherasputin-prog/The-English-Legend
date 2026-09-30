@@ -1,0 +1,108 @@
+<script>
+const API_KEY='AIzaSyC9XBQ6fxycqUXB47dP4Y5lTCn5KHGn0Mk';
+const PROJECT='the-english-legend';
+let token=null;
+function unwrap(v){if(v==null)return null;if('stringValue'in v)return v.stringValue;if('integerValue'in v)return Number(v.integerValue);if('doubleValue'in v)return v.doubleValue;if('booleanValue'in v)return v.booleanValue;if('nullValue'in v)return null;if('timestampValue'in v)return v.timestampValue;if('arrayValue'in v)return(v.arrayValue.values||[]).map(unwrap);if('mapValue'in v)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,unwrap(x)]));return v}
+function docToObj(doc){const id=doc.name.split('/').pop();return{id,...Object.fromEntries(Object.entries(doc.fields||{}).map(([k,v])=>[k,unwrap(v)]))}}
+async function safeFetch(url,opts,label){
+  console.log(`[NET] → ${label}  ${url}`);
+  try{
+    const r=await fetch(url,opts);
+    console.log(`[NET] ← ${label}  status=${r.status}`);
+    return r;
+  }catch(e){
+    console.error(`[NET] ❌ ${label}  failed:`,e.name,e.message);
+    const hint=e.name==='TypeError'&&location.protocol==='file:'?'افتح الصفحة عبر http:// مش file://':'';
+    throw new Error(`${e.name}: ${e.message}${hint?' — '+hint:''}`);
+  }
+}
+async function login(email,password){
+  const r=await safeFetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({returnSecureToken:true,email,password,clientType:'CLIENT_TYPE_WEB'})},
+    'signInWithPassword'
+  );
+  const j=await r.json();
+  if(j.error){console.error('[Auth] ❌',j.error);throw new Error(`${j.error.message} (code ${j.error.code})`)}
+  console.log('[Auth] ✅ logged in. uid=',j.localId);
+  return{token:j.idToken,uid:j.localId};
+}
+async function listCollectionIds(){
+  const r=await safeFetch(
+    `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/%28default%29/documents:listCollectionIds`,
+    {method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:'{}'},
+    'listCollectionIds'
+  );
+  const j=await r.json();
+  if(j.error){console.error('[FS] ❌ listCollectionIds',j.error);return{error:j.error}}
+  console.log('[FS] ✅ collections:',j.collectionIds);
+  return{ids:j.collectionIds||[]};
+}
+async function listDocuments(col){
+  const r=await safeFetch(
+    `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/%28default%29/documents/${col}`,
+    {headers:{Authorization:`Bearer ${token}`}},
+    `GET ${col}`
+  );
+  const j=await r.json();
+  if(j.error){console.error(`[FS] ❌ ${col}`,j.error);return{error:j.error}}
+  const docs=(j.documents||[]).map(docToObj);
+  console.log(`[FS] ✅ ${col}: ${docs.length} docs`);
+  return{docs};
+}
+function clearAll(){document.getElementById('out').innerHTML='';const st=document.getElementById('status');st.textContent='';st.className=''}
+async function loadAll(){
+  const em=document.getElementById('em').value.trim();
+  const pw=document.getElementById('pw').value;
+  const st=document.getElementById('status');
+  const out=document.getElementById('out');
+  out.innerHTML='';
+  st.textContent='⏳ Logging in…';
+  st.className='';
+  if(location.protocol==='file:'){
+    st.textContent='❌ لازم تفتح الصفحة عبر http:// أو https:// — مش file://';
+    st.className='error';
+    return;
+  }
+  try{
+    const res=await login(em,pw);
+    token=res.token;
+    st.textContent=`✅ Logged in  ·  uid = ${res.uid}  ·  token len = ${token.length}`;
+    st.className='success';
+  }catch(e){
+    st.textContent='❌ Login failed: '+e.message;
+    st.className='error';
+    return;
+  }
+  out.innerHTML='<p>⏳ Listing collections…</p>';
+  const cols=await listCollectionIds();
+  let html='';
+  html+=`<div class="card"><h2>📚 Collections in project</h2>`;
+  if(cols.error){
+    html+=`<p class="error">❌ ${cols.error.status}: ${cols.error.message}</p><p style="color:#6b7280">سأحاول فتح الجداول المعروفة يدوياً…</p>`;
+  }else{
+    html+=`<p>${cols.ids.length} collection(s): `+cols.ids.map(c=>`<span class="pill">${c}</span>`).join('')+`</p>`;
+  }
+  html+=`</div>`;
+  const known=['users','lessons','quizzes','attempts'];
+  const toFetch=[...new Set([...(cols.ids||[]),...known])];
+  for(const col of toFetch){
+    const res=await listDocuments(col);
+    html+=`<div class="card" style="margin-top:20px"><h2>📁 ${col}`;
+    if(res.error){
+      html+=`<span class="pill err">${res.error.status}</span></h2><p class="error">${res.error.message}</p>`;
+    }else{
+      html+=`<span class="pill ok">${res.docs.length} docs</span></h2>`;
+      if(res.docs.length){
+        html+=res.docs.map(d=>`<div class="doc"><h3>📄 ${d.id}</h3><pre>${escapeHtml(JSON.stringify(d,null,2))}</pre></div>`).join('');
+      }else{
+        html+='<p style="color:#9ca3af"><i>empty</i></p>';
+      }
+    }
+    html+='</div>';
+  }
+  out.innerHTML=html;
+  console.log('✅ Done. Open DevTools Console to see the raw log.');
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script>
